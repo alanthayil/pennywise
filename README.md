@@ -13,7 +13,7 @@ A simple, beautiful, browser-based expense tracker. No signups, no servers, no d
 
 ## How to use
 
-1. Open `index.html` in your browser (or serve via `python3 -m http.server`)
+1. Open `index.html` in your browser (or serve via `python3 -m http.server 8766` and visit `http://localhost:8766`)
 2. Start adding transactions
 3. That's it.
 
