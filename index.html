@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>⚡ Pennywise - Expense Tracker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0f0f13;
+      --surface: #1a1a24;
+      --surface2: #24243a;
+      --border: #2a2a40;
+      --text: #e8e8f0;
+      --text2: #9898b8;
+      --green: #2ecc71;
+      --red: #e74c3c;
+      --blue: #5b7fff;
+      --orange: #f39c12;
+      --purple: #9b59b6;
+      --radius: 12px;
+    }
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .app { max-width: 1100px; margin: 0 auto; }
+
+    /* Header */
+    .header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 16px 0 24px; border-bottom: 1px solid var(--border); margin-bottom: 24px;
+    }
+    .logo { display: flex; align-items: center; gap: 10px; }
+    .logo h1 { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; }
+    .logo span { color: var(--text2); font-weight: 300; }
+    .balance-card {
+      text-align: right;
+    }
+    .balance-label { font-size: 12px; color: var(--text2); text-transform: uppercase; letter-spacing: 1px; }
+    .balance-amount { font-size: 32px; font-weight: 800; }
+    .balance-amount.positive { color: var(--green); }
+    .balance-amount.negative { color: var(--red); }
+    .balance-amount.zero { color: var(--text2); }
+
+    /* Summary Cards */
+    .summary {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 12px; margin-bottom: 24px;
+    }
+    .summary-card {
+      background: var(--surface); border-radius: var(--radius);
+      padding: 16px 20px; border: 1px solid var(--border);
+    }
+    .summary-card .label { font-size: 12px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+    .summary-card .value { font-size: 24px; font-weight: 700; }
+    .summary-card .value.income { color: var(--green); }
+    .summary-card .value.expense { color: var(--red); }
+
+    /* Layout: Form + Chart */
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+    @media (max-width: 700px) { .row { grid-template-columns: 1fr; } }
+
+    .card {
+      background: var(--surface); border-radius: var(--radius);
+      padding: 20px; border: 1px solid var(--border);
+    }
+    .card h2 { font-size: 15px; font-weight: 600; margin-bottom: 16px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; }
+
+    /* Form */
+    .form-group { margin-bottom: 12px; }
+    .form-group label { display: block; font-size: 12px; color: var(--text2); margin-bottom: 4px; font-weight: 500; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    input, select {
+      width: 100%; padding: 10px 12px; border-radius: 8px;
+      background: var(--bg); border: 1px solid var(--border);
+      color: var(--text); font-size: 14px; font-family: inherit;
+      transition: border-color 0.2s;
+    }
+    input:focus, select:focus { outline: none; border-color: var(--blue); }
+    .type-toggle {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 12px;
+    }
+    .type-btn {
+      padding: 10px; border-radius: 8px; border: 1px solid var(--border);
+      background: var(--bg); color: var(--text2); cursor: pointer;
+      font-size: 14px; font-weight: 600; transition: all 0.2s;
+    }
+    .type-btn.active.income-btn { background: var(--green); color: #fff; border-color: var(--green); }
+    .type-btn.active.expense-btn { background: var(--red); color: #fff; border-color: var(--red); }
+    .btn-submit {
+      width: 100%; padding: 12px; border-radius: 8px; border: none;
+      background: var(--blue); color: #fff; font-size: 15px; font-weight: 600;
+      cursor: pointer; transition: opacity 0.2s; margin-top: 4px;
+    }
+    .btn-submit:hover { opacity: 0.9; }
+    .btn-danger {
+      background: none; border: 1px solid var(--red); color: var(--red);
+      padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px;
+      transition: all 0.2s;
+    }
+    .btn-danger:hover { background: var(--red); color: #fff; }
+
+    /* Chart */
+    .chart-container { position: relative; height: 220px; }
+    .chart-legend { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; justify-content: center; }
+    .chart-legend-item { font-size: 12px; display: flex; align-items: center; gap: 4px; color: var(--text2); }
+    .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+    /* Transaction List */
+    .transactions-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .transactions-header h2 { font-size: 15px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; }
+    .filter-btns { display: flex; gap: 6px; }
+    .filter-btn {
+      padding: 4px 12px; border-radius: 6px; border: 1px solid var(--border);
+      background: transparent; color: var(--text2); cursor: pointer;
+      font-size: 12px; transition: all 0.2s;
+    }
+    .filter-btn.active { background: var(--surface2); color: var(--text); border-color: var(--blue); }
+
+    .tx-list { list-style: none; }
+    .tx-item {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 12px 14px; border-radius: 8px;
+      background: var(--bg); margin-bottom: 6px;
+      border-left: 3px solid var(--border);
+    }
+    .tx-item.income { border-left-color: var(--green); }
+    .tx-item.expense { border-left-color: var(--red); }
+    .tx-info { display: flex; flex-direction: column; gap: 2px; }
+    .tx-name { font-size: 14px; font-weight: 500; }
+    .tx-meta { font-size: 11px; color: var(--text2); }
+    .tx-amount { font-size: 16px; font-weight: 700; }
+    .tx-amount.income { color: var(--green); }
+    .tx-amount.expense { color: var(--red); }
+    .tx-delete { background: none; border: none; color: var(--text2); cursor: pointer; padding: 4px 8px; font-size: 16px; opacity: 0; transition: opacity 0.2s; }
+    .tx-item:hover .tx-delete { opacity: 1; }
+    .tx-delete:hover { color: var(--red); }
+
+    .empty-state { text-align: center; padding: 40px 20px; color: var(--text2); }
+    .empty-state h3 { margin-bottom: 8px; font-size: 18px; font-weight: 500; color: var(--text); }
+    .empty-state p { font-size: 13px; }
+
+    /* Export */
+    .export-bar { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; }
+    .btn-export {
+      background: var(--surface2); border: 1px solid var(--border); color: var(--text2);
+      padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 12px;
+      transition: all 0.2s;
+    }
+    .btn-export:hover { color: var(--text); border-color: var(--blue); }
+  </style>
+</head>
+<body>
+<div class="app">
+  <!-- Header -->
+  <div class="header">
+    <div class="logo">
+      <h1>⚡ Pennywise</h1>
+      <span>Expense Tracker</span>
+    </div>
+    <div class="balance-card">
+      <div class="balance-label">Net Savings</div>
+      <div class="balance-amount" id="balanceDisplay">€0.00</div>
+    </div>
+  </div>
+
+  <!-- Summary -->
+  <div class="summary">
+    <div class="summary-card">
+      <div class="label">Total Income</div>
+      <div class="value income" id="totalIncome">€0.00</div>
+    </div>
+    <div class="summary-card">
+      <div class="label">Total Expenses</div>
+      <div class="value expense" id="totalExpense">€0.00</div>
+    </div>
+  </div>
+
+  <!-- Form + Chart -->
+  <div class="row">
+    <!-- Add Transaction -->
+    <div class="card">
+      <h2>Add Transaction</h2>
+      <div class="type-toggle">
+        <button class="type-btn income-btn active" data-type="income" onclick="setType('income')">💰 Income</button>
+        <button class="type-btn expense-btn" data-type="expense" onclick="setType('expense')">💸 Expense</button>
+      </div>
+      <div class="form-group">
+        <label>Description</label>
+        <input type="text" id="descInput" placeholder="e.g. Freelance project" autocomplete="off" />
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Amount (€)</label>
+          <input type="number" id="amountInput" placeholder="0.00" step="0.01" min="0" />
+        </div>
+        <div class="form-group">
+          <label>Category</label>
+          <select id="categoryInput">
+            <optgroup label="Income">
+              <option value="Salary">Salary</option>
+              <option value="Freelance">Freelance</option>
+              <option value="Investment">Investment</option>
+              <option value="Gift">Gift</option>
+              <option value="Other Income">Other</option>
+            </optgroup>
+            <optgroup label="Expenses">
+              <option value="Food & Drinks">Food & Drinks</option>
+              <option value="Transport">Transport</option>
+              <option value="Rent">Rent</option>
+              <option value="Utilities">Utilities</option>
+              <option value="Shopping">Shopping</option>
+              <option value="Entertainment">Entertainment</option>
+              <option value="Health">Health</option>
+              <option value="Subscriptions">Subscriptions</option>
+              <option value="Other Expense">Other</option>
+            </optgroup>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Date</label>
+        <input type="date" id="dateInput" />
+      </div>
+      <button class="btn-submit" onclick="addTransaction()">+ Add Transaction</button>
+    </div>
+
+    <!-- Chart -->
+    <div class="card">
+      <h2>Spending Breakdown</h2>
+      <div class="chart-container">
+        <canvas id="expenseChart"></canvas>
+      </div>
+      <div id="chartLegend" class="chart-legend"></div>
+    </div>
+  </div>
+
+  <!-- Transactions -->
+  <div class="card" style="margin-bottom:24px;">
+    <div class="transactions-header">
+      <h2>Transactions</h2>
+      <div class="filter-btns">
+        <button class="filter-btn active" data-filter="all" onclick="setFilter('all')">All</button>
+        <button class="filter-btn" data-filter="income" onclick="setFilter('income')">Income</button>
+        <button class="filter-btn" data-filter="expense" onclick="setFilter('expense')">Expenses</button>
+      </div>
+    </div>
+    <ul class="tx-list" id="txList"></ul>
+    <div class="export-bar">
+      <button class="btn-export" onclick="exportCSV()">📥 Export CSV</button>
+      <button class="btn-export" onclick="clearAllData()">🗑️ Clear All</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// === State ===
+let transactions = JSON.parse(localStorage.getItem('pennywise_data') || '[]');
+let currentType = 'income';
+let currentFilter = 'all';
+let chartInstance = null;
+
+const CATEGORY_COLORS = {
+  'Salary': '#2ecc71', 'Freelance': '#1abc9c', 'Investment': '#3498db', 'Gift': '#9b59b6',
+  'Food & Drinks': '#e74c3c', 'Transport': '#f39c12', 'Rent': '#e67e22', 'Utilities': '#95a5a6',
+  'Shopping': '#e91e63', 'Entertainment': '#9b59b6', 'Health': '#1abc9c', 'Subscriptions': '#3498db',
+  'Other Income': '#7f8c8d', 'Other Expense': '#7f8c8d'
+};
+
+// === Init ===
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('dateInput').valueAsDate = new Date();
+  render();
+});
+
+// === Type Toggle ===
+function setType(type) {
+  currentType = type;
+  document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector(`.type-btn.${type}-btn`).classList.add('active');
+}
+
+// === Add Transaction ===
+function addTransaction() {
+  const desc = document.getElementById('descInput').value.trim();
+  const amount = parseFloat(document.getElementById('amountInput').value);
+  const category = document.getElementById('categoryInput').value;
+  const date = document.getElementById('dateInput').value;
+
+  if (!desc) { shake(document.getElementById('descInput')); return; }
+  if (!amount || amount <= 0) { shake(document.getElementById('amountInput')); return; }
+  if (!date) { shake(document.getElementById('dateInput')); return; }
+
+  transactions.push({
+    id: Date.now(),
+    type: currentType,
+    description: desc,
+    amount: amount,
+    category: category,
+    date: date
+  });
+
+  saveAndRender();
+  document.getElementById('descInput').value = '';
+  document.getElementById('amountInput').value = '';
+  document.getElementById('descInput').focus();
+}
+
+// === Delete ===
+function deleteTransaction(id) {
+  transactions = transactions.filter(t => t.id !== id);
+  saveAndRender();
+}
+
+// === Filter ===
+function setFilter(filter) {
+  currentFilter = filter;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector(`.filter-btn[data-filter="${filter}"]`).classList.add('active');
+  renderTransactions();
+}
+
+// === Save & Render ===
+function saveAndRender() {
+  localStorage.setItem('pennywise_data', JSON.stringify(transactions));
+  render();
+}
+
+function render() {
+  updateSummary();
+  renderTransactions();
+  updateChart();
+}
+
+function updateSummary() {
+  const totalIncome = transactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+  const totalExpense = transactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+  const balance = totalIncome - totalExpense;
+
+  document.getElementById('totalIncome').textContent = '€' + totalIncome.toFixed(2);
+  document.getElementById('totalExpense').textContent = '€' + totalExpense.toFixed(2);
+
+  const balEl = document.getElementById('balanceDisplay');
+  balEl.textContent = (balance >= 0 ? '€' : '-€') + Math.abs(balance).toFixed(2);
+  balEl.className = 'balance-amount ' + (balance > 0 ? 'positive' : balance < 0 ? 'negative' : 'zero');
+}
+
+function renderTransactions() {
+  const list = document.getElementById('txList');
+  let filtered = transactions;
+  if (currentFilter !== 'all') filtered = transactions.filter(t => t.type === currentFilter);
+
+  // Sort by date descending, then by id descending
+  filtered.sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id);
+
+  if (filtered.length === 0) {
+    list.innerHTML = `<div class="empty-state"><h3>No transactions yet</h3><p>Add your first income or expense above ☝️</p></div>`;
+    return;
+  }
+
+  list.innerHTML = filtered.map(t => {
+    const amt = t.type === 'income' ? '+€' + t.amount.toFixed(2) : '-€' + t.amount.toFixed(2);
+    const cls = t.type === 'income' ? 'income' : 'expense';
+    const date = new Date(t.date + 'T00:00:00');
+    const formatted = date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    return `<li class="tx-item ${cls}">
+      <div class="tx-info">
+        <div class="tx-name">${escHtml(t.description)}</div>
+        <div class="tx-meta">${formatted} · ${escHtml(t.category)}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span class="tx-amount ${cls}">${amt}</span>
+        <button class="tx-delete" onclick="deleteTransaction(${t.id})">✕</button>
+      </div>
+    </li>`;
+  }).join('');
+}
+
+function updateChart() {
+  const expenses = transactions.filter(t => t.type === 'expense');
+  if (expenses.length === 0) {
+    if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+    document.querySelector('#chartLegend').innerHTML = '<div style="text-align:center;color:var(--text2);padding:40px 0;">Add expenses to see breakdown</div>';
+    return;
+  }
+
+  // Aggregate by category
+  const map = {};
+  expenses.forEach(t => { map[t.category] = (map[t.category] || 0) + t.amount; });
+  const labels = Object.keys(map);
+  const data = Object.values(map);
+  const colors = labels.map(l => CATEGORY_COLORS[l] || '#7f8c8d');
+
+  const ctx = document.getElementById('expenseChart').getContext('2d');
+  if (chartInstance) chartInstance.destroy();
+
+  chartInstance = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels,
+      datasets: [{ data, backgroundColor: colors, borderWidth: 0 }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '65%',
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: 'rgba(15,15,19,0.9)',
+          titleColor: '#e8e8f0',
+          bodyColor: '#9898b8',
+          padding: 12,
+          cornerRadius: 8,
+          callbacks: {
+            label: ctx => ' €' + ctx.parsed.toFixed(2)
+          }
+        }
+      }
+    }
+  });
+
+  // Custom legend
+  const total = data.reduce((a, b) => a + b, 0);
+  const legendHtml = labels.map((l, i) => {
+    const pct = ((data[i] / total) * 100).toFixed(1);
+    return `<span class="chart-legend-item"><span class="legend-dot" style="background:${colors[i]}"></span>${escHtml(l)} ${pct}%</span>`;
+  }).join('');
+  document.querySelector('#chartLegend').innerHTML = legendHtml;
+}
+
+// === Export ===
+function exportCSV() {
+  const headers = 'Type,Description,Category,Amount,Date\n';
+  const rows = transactions.map(t =>
+    `${t.type},${csvEscape(t.description)},${csvEscape(t.category)},${t.amount.toFixed(2)},${t.date}`
+  ).join('\n');
+  const blob = new Blob([headers + rows], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = 'pennywise_export.csv';
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(url);
+}
+
+function clearAllData() {
+  if (!confirm('Delete ALL transaction data?')) return;
+  transactions = [];
+  saveAndRender();
+}
+
+// === Helpers ===
+function escHtml(s) {
+  const d = document.createElement('div'); d.textContent = s; return d.innerHTML;
+}
+function csvEscape(s) { return '"' + s.replace(/"/g, '""') + '"'; }
+function shake(el) {
+  el.style.borderColor = 'var(--red)';
+  el.style.animation = 'none';
+  el.offsetHeight;
+  el.style.animation = 'shake 0.3s ease';
+  setTimeout(() => el.style.borderColor = '', 1000);
+}
+</script>
+
+<style>
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-6px); }
+  75% { transform: translateX(6px); }
+}
+</style>
+</body>
+</html>
